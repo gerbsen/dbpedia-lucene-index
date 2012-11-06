@@ -1,7 +1,6 @@
 import java.io.File;
 import java.io.IOException;
 import java.text.MessageFormat;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -10,24 +9,17 @@ import java.util.Set;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.NumericField;
+import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.IntField;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.CorruptIndexException;
-import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.queryParser.ParseException;
-import org.apache.lucene.queryParser.QueryParser;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.LockObtainFailedException;
-import org.apache.lucene.store.NIOFSDirectory;
-import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.Version;
 
 import com.hp.hpl.jena.query.QuerySolution;
@@ -52,9 +44,8 @@ public class DBpediaLuceneIndexGenerator {
      * @param args
      * @throws IOException 
      * @throws CorruptIndexException 
-     * @throws ParseException 
      */
-    public static void main(String[] args) throws CorruptIndexException, IOException, ParseException {
+    public static void main(String[] args) throws CorruptIndexException, IOException {
         
         for (int i = 0; i < args.length ; i = i + 2) {
             
@@ -82,7 +73,7 @@ public class DBpediaLuceneIndexGenerator {
         DBpediaLuceneIndexGenerator indexGenerator = new DBpediaLuceneIndexGenerator();
         
         // create the index writer configuration and create a new index writer
-        IndexWriterConfig indexWriterConfig = new IndexWriterConfig(Version.LUCENE_36, new StandardAnalyzer(Version.LUCENE_36));
+        IndexWriterConfig indexWriterConfig = new IndexWriterConfig(Version.LUCENE_40, new StandardAnalyzer(Version.LUCENE_40));
         indexWriterConfig.setRAMBufferSizeMB(RAM_BUFFER_MAX_SIZE);
         indexWriterConfig.setOpenMode(OVERWRITE_INDEX || !indexGenerator.isIndexExisting(INDEX_DIRECTORY) ? OpenMode.CREATE : OpenMode.APPEND);
         writer = indexGenerator.createIndex(INDEX_DIRECTORY, indexWriterConfig);
@@ -132,18 +123,22 @@ public class DBpediaLuceneIndexGenerator {
     private void addIndexDocuments(Set<IndexDocument> indexDocuments) throws CorruptIndexException, IOException {
 
         Set<Document> luceneDocuments = new HashSet<Document>();
+        FieldType stringType = new FieldType(StringField.TYPE_STORED);
+        stringType.setStoreTermVectors(false);
+        FieldType textType = new FieldType(TextField.TYPE_STORED);
+        textType.setStoreTermVectors(false);
         for ( IndexDocument indexDocument : indexDocuments ) {
             
             Document luceneDocument = new Document();
-            luceneDocument.add(new Field("uri", indexDocument.getUri(), Field.Store.YES, Field.Index.NOT_ANALYZED, Field.TermVector.NO));
-            luceneDocument.add(new Field("label", indexDocument.getLabel(), Field.Store.YES, Field.Index.ANALYZED, Field.TermVector.NO));
-            luceneDocument.add(new Field("comment", indexDocument.getShortAbstract(), Field.Store.YES, Field.Index.ANALYZED, Field.TermVector.NO));
-            luceneDocument.add(new Field("imageURL", indexDocument.getImageUri(), Field.Store.YES, Field.Index.NOT_ANALYZED, Field.TermVector.NO));
-            luceneDocument.add(new NumericField("pagerank", Field.Store.YES, true).setIntValue(indexDocument.getPageRank()));
+            luceneDocument.add(new Field("uri", indexDocument.getUri(), stringType));
+            luceneDocument.add(new Field("label", indexDocument.getLabel(), textType));
+            luceneDocument.add(new Field("comment", indexDocument.getShortAbstract(), textType));
+            luceneDocument.add(new Field("imageURL", indexDocument.getImageUri(), stringType));
+            luceneDocument.add(new IntField("pagerank", indexDocument.getPageRank(), Field.Store.NO));
             for ( String type : indexDocument.getTypes() )
-                luceneDocument.add(new Field("types", type, Field.Store.YES, Field.Index.NOT_ANALYZED, Field.TermVector.NO));
+                luceneDocument.add(new Field("types", type, stringType));
             for ( String surfaceForm : indexDocument.getSurfaceForms() )
-                luceneDocument.add(new Field("surfaceForms", surfaceForm, Field.Store.YES, Field.Index.ANALYZED, Field.TermVector.NO));
+                luceneDocument.add(new Field("surfaceForms", surfaceForm, textType));
                     
             luceneDocuments.add(luceneDocument);
         }
@@ -242,7 +237,7 @@ public class DBpediaLuceneIndexGenerator {
         
         try {
             
-            return IndexReader.indexExists(FSDirectory.open(new File(indexDirectory)));
+            return DirectoryReader.indexExists(FSDirectory.open(new File(indexDirectory)));
         }
         catch (IOException e) {
             

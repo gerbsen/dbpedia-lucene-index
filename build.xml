@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project default="create_run_jar" name="Create Runnable Jar for Project boa with Jar-in-Jar Loader">
+    <!--this file was created by Eclipse Runnable JAR Export Wizard-->
+    <!--ANT 1.7 is required                                        -->
+    <target name="create_run_jar">
+        <jar destfile="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/data/scripts/boa2arff.jar">
+            <manifest>
+                <attribute name="Main-Class" value="org.eclipse.jdt.internal.jarinjarloader.JarRsrcLoader"/>
+                <attribute name="Rsrc-Main-Class" value="de.uni_leipzig.simba.boa.backend.featurescoring.machinelearningtrainingfile.WekaMachineLearningTrainingFileConverter"/>
+                <attribute name="Class-Path" value="."/>
+                <attribute name="Rsrc-Class-Path" value="./ annotations-api.jar catalina-ant.jar catalina-ha.jar catalina-tribes.jar catalina.jar el-api.jar jasper-el.jar jasper-jdt.jar jasper.jar jsp-api.jar servlet-api.jar tomcat-coyote.jar tomcat-dbcp.jar tomcat-i18n-es.jar tomcat-i18n-fr.jar tomcat-i18n-ja.jar antlr-2.7.6.jar colt.jar commonlib.jar commons-cli-1.2.jar commons-codec-1.4.jar commons-collections-3.1.jar commons-lang3-3.0.jar commons-logging-1.1.1.jar commons-io-2.1.jar dom4j-1.6.1.jar dsiutils-1.0.10.jar fastutil.jar hibernate-jpa-2.0-api-1.0.0.Final.jar hibernate3.jar icu4j-3.4.4.jar iri-0.8.jar javassist-3.12.0.GA.jar je-4.0.71.jar jgraph.jar jgrapht.jar jta-1.1.jar junit-4.8.2.jar jwnl-1.3.3.jar lc4j-0.3.jar log4j-1.2.16.jar lucene-core-3.4.0.jar maxent-3.0.0.jar mg4j-3.0.1.jar opennlp-tools-1.5.0.jar reverb.jar encog-core-3.0.1.jar simmetrics_jar_v1_6_2_d07_02_07.jar slf4j-api-1.5.6.jar slf4j-log4j12-1.5.6.jar spring.jar stanford-corenlp-2011-06-19.jar stanford-corenlp-models-2011-06-19.jar utk.jar weka-3-6-4.jar xercesImpl-2.7.1.jar xom.jar apache-solr-solrj-3.3.0.jar jsoup-1.6.1.jar guava-10.0.1.jar sindice4j-0.2.jar commons-lang-2.5.jar jaws-bin.jar LookupService.jar java-getopt-1.0.9.jar stax-api-1.0.1.jar wstx-asl-3.2.9.jar charts4j-1.3.jar nxparser-1.1.jar vaadin-6.7.4.jar jersey-client-1.12.jar jersey-server-1.12.jar jersey-servlet-1.12.jar jersey-core-1.12.jar asm-3.1.jar arq-2.8.1.jar jena-2.6.4.jar JHanNanum_0.8.2.jar LBJ2.jar LBJ2Library.jar LbjNerTagger.jar htmlunit-2.9.jar sac-1.3.jar commons-httpclient-3.1.jar cssparser-0.9.5.jar htmlunit-core-js-2.9.jar httpmime-4.1.2.jar nekohtml-1.9.15.jar serializer-2.7.1.jar httpclient-4.1.2.jar httpcore-4.1.2.jar xalan-2.7.1.jar xml-apis-1.3.04.jar"/>
+            </manifest>
+            <zipfileset src="jar-in-jar-loader.zip"/>
+            <fileset dir="/Users/gerb/Development/workspaces/java-ws/boa/build/classes"/>
+            <zipfileset dir="/Users/gerb/Development/applications/apache-tomcat-6.0.20/lib" includes="annotations-api.jar"/>
+            <zipfileset dir="/Users/gerb/Development/applications/apache-tomcat-6.0.20/lib" includes="catalina-ant.jar"/>
+            <zipfileset dir="/Users/gerb/Development/applications/apache-tomcat-6.0.20/lib" includes="catalina-ha.jar"/>
+            <zipfileset dir="/Users/gerb/Development/applications/apache-tomcat-6.0.20/lib" includes="catalina-tribes.jar"/>
+            <zipfileset dir="/Users/gerb/Development/applications/apache-tomcat-6.0.20/lib" includes="catalina.jar"/>
+            <zipfileset dir="/Users/gerb/Development/applications/apache-tomcat-6.0.20/lib" includes="el-api.jar"/>
+            <zipfileset dir="/Users/gerb/Development/applications/apache-tomcat-6.0.20/lib" includes="jasper-el.jar"/>
+            <zipfileset dir="/Users/gerb/Development/applications/apache-tomcat-6.0.20/lib" includes="jasper-jdt.jar"/>
+            <zipfileset dir="/Users/gerb/Development/applications/apache-tomcat-6.0.20/lib" includes="jasper.jar"/>
+            <zipfileset dir="/Users/gerb/Development/applications/apache-tomcat-6.0.20/lib" includes="jsp-api.jar"/>
+            <zipfileset dir="/Users/gerb/Development/applications/apache-tomcat-6.0.20/lib" includes="servlet-api.jar"/>
+            <zipfileset dir="/Users/gerb/Development/applications/apache-tomcat-6.0.20/lib" includes="tomcat-coyote.jar"/>
+            <zipfileset dir="/Users/gerb/Development/applications/apache-tomcat-6.0.20/lib" includes="tomcat-dbcp.jar"/>
+            <zipfileset dir="/Users/gerb/Development/applications/apache-tomcat-6.0.20/lib" includes="tomcat-i18n-es.jar"/>
+            <zipfileset dir="/Users/gerb/Development/applications/apache-tomcat-6.0.20/lib" includes="tomcat-i18n-fr.jar"/>
+            <zipfileset dir="/Users/gerb/Development/applications/apache-tomcat-6.0.20/lib" includes="tomcat-i18n-ja.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="antlr-2.7.6.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="colt.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="commonlib.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="commons-cli-1.2.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="commons-codec-1.4.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="commons-collections-3.1.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="commons-lang3-3.0.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="commons-logging-1.1.1.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="commons-io-2.1.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="dom4j-1.6.1.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="dsiutils-1.0.10.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="fastutil.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="hibernate-jpa-2.0-api-1.0.0.Final.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="hibernate3.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="icu4j-3.4.4.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="iri-0.8.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="javassist-3.12.0.GA.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="je-4.0.71.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="jgraph.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="jgrapht.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="jta-1.1.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="junit-4.8.2.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="jwnl-1.3.3.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="lc4j-0.3.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="log4j-1.2.16.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="lucene-core-3.4.0.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="maxent-3.0.0.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="mg4j-3.0.1.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="opennlp-tools-1.5.0.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="reverb.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="encog-core-3.0.1.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="simmetrics_jar_v1_6_2_d07_02_07.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="slf4j-api-1.5.6.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="slf4j-log4j12-1.5.6.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="spring.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="stanford-corenlp-2011-06-19.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="stanford-corenlp-models-2011-06-19.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="utk.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="weka-3-6-4.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="xercesImpl-2.7.1.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="xom.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="apache-solr-solrj-3.3.0.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="jsoup-1.6.1.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="guava-10.0.1.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="sindice4j-0.2.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="commons-lang-2.5.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="jaws-bin.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="LookupService.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="java-getopt-1.0.9.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="stax-api-1.0.1.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="wstx-asl-3.2.9.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="charts4j-1.3.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="nxparser-1.1.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="vaadin-6.7.4.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="jersey-client-1.12.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="jersey-server-1.12.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="jersey-servlet-1.12.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="jersey-core-1.12.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="asm-3.1.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="arq-2.8.1.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="jena-2.6.4.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="JHanNanum_0.8.2.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="LBJ2.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="LBJ2Library.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="LbjNerTagger.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="htmlunit-2.9.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="sac-1.3.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="commons-httpclient-3.1.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="cssparser-0.9.5.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="htmlunit-core-js-2.9.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="httpmime-4.1.2.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="nekohtml-1.9.15.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="serializer-2.7.1.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="httpclient-4.1.2.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="httpcore-4.1.2.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="xalan-2.7.1.jar"/>
+            <zipfileset dir="/Users/gerb/Development/workspaces/java-ws/boa/WebContent/WEB-INF/lib" includes="xml-apis-1.3.04.jar"/>
+        </jar>
+    </target>
+</project>

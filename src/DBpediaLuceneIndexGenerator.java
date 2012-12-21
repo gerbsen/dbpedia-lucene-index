@@ -8,6 +8,7 @@ import java.util.Set;
 
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.DoubleField;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.IntField;
@@ -22,6 +23,10 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.util.Version;
 
+import com.hp.hpl.jena.query.Query;
+import com.hp.hpl.jena.query.QueryExecution;
+import com.hp.hpl.jena.query.QueryExecutionFactory;
+import com.hp.hpl.jena.query.QueryFactory;
 import com.hp.hpl.jena.query.QuerySolution;
 import com.hp.hpl.jena.query.ResultSet;
 import com.hp.hpl.jena.sparql.engine.http.QueryEngineHTTP;
@@ -134,7 +139,8 @@ public class DBpediaLuceneIndexGenerator {
             luceneDocument.add(new Field("label", indexDocument.getLabel(), textType));
             luceneDocument.add(new Field("comment", indexDocument.getShortAbstract(), textType));
             luceneDocument.add(new Field("imageURL", indexDocument.getImageUri(), stringType));
-            luceneDocument.add(new IntField("pagerank", indexDocument.getPageRank(), Field.Store.NO));
+            luceneDocument.add(new IntField("pagerank", indexDocument.getPageRank(), Field.Store.YES));
+            luceneDocument.add(new DoubleField("disambiguationScore", indexDocument.getDisambiguationScore(), Field.Store.YES));
             for ( String type : indexDocument.getTypes() )
                 luceneDocument.add(new Field("types", type, stringType));
             for ( String surfaceForm : indexDocument.getSurfaceForms() )
@@ -144,6 +150,32 @@ public class DBpediaLuceneIndexGenerator {
         }
         writer.addDocuments(luceneDocuments);
     }
+    
+    public double getAprioriScore1(String uri, String endpoint, String graph) {
+
+        String query = "SELECT (COUNT(?s) AS ?cnt) WHERE {?s ?p <"+uri+">}";
+        Query sparqlQuery = QueryFactory.create(query);
+        QueryExecution qexec;
+        if (graph != null) {
+            qexec = QueryExecutionFactory.sparqlService(endpoint, sparqlQuery, graph);
+        } else {
+            qexec = QueryExecutionFactory.sparqlService(endpoint, sparqlQuery);
+        }
+        ResultSet results = qexec.execSelect();
+        int count = 0;
+        try {
+            while (results.hasNext()) {
+                QuerySolution soln = results.nextSolution();
+                count = soln.getLiteral("cnt").getInt();
+            }
+        }
+        catch(Exception e)
+        {
+            e.printStackTrace();
+        }
+        //logger.info(uri+" -> "+Math.log(count+1));
+        return Math.log(count+1);
+}
 
     /**
      * Queries a configured sparql endpoint for all information a document needs
@@ -188,6 +220,13 @@ public class DBpediaLuceneIndexGenerator {
                 document.setPageRank(solution.get("rank") != null ? Integer.valueOf(solution.get("rank").toString().replace("^^http://www.w3.org/2001/XMLSchema#integer", "")) : 0);
                 document.setImageUri(solution.get("imageUrl") != null ? solution.get("imageUrl").toString() : "");
                 document.setShortAbstract(solution.get("abstract") != null ? solution.get("abstract").asLiteral().getLexicalForm() : "");
+                
+                try {
+					double disambiguationScore = getAprioriScore1(uri, SPARQL_ENDPOINT, GRAPH);
+					document.setDisambiguationScore(disambiguationScore);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
             }
             // there might be different types
             if (solution.get("types") != null) document.getTypes().add(solution.get("types").toString());

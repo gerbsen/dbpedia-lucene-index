@@ -18,6 +18,7 @@ public class IndexDocument {
     private Set<String> types = new HashSet<String>();
     private Set<String> surfaceForms = new HashSet<String>();
     private Integer pagerank = 0;
+    private Double disambiguationScore = 0d;
     private String shortAbstract = "";
     
     /**
@@ -131,4 +132,12 @@ public class IndexDocument {
     
         this.shortAbstract = shortAbstract;
     }
+    
+    public Double getDisambiguationScore() {
+		return disambiguationScore;
+	}
+    
+    public void setDisambiguationScore(Double disambiguationScore) {
+		this.disambiguationScore = disambiguationScore;
+	}
 }

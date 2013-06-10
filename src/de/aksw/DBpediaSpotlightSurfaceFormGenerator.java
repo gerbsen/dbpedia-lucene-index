@@ -1,6 +1,9 @@
+package de.aksw;
 import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -11,6 +14,7 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.semanticweb.yars.nx.Node;
 import org.semanticweb.yars.nx.parser.NxParser;
@@ -32,26 +36,22 @@ public class DBpediaSpotlightSurfaceFormGenerator {
     private static List<String> LOWERCASE_STOPWORDS         = null;
     private static final List<String> STOPWORDS             = Arrays.asList("but", "i", "a", "about", "an", "and", "are", "as", "at", "be", "by", "com", "for", "from", "how", "in", "is", "it", "of", "on", "or", "that", "the", "this", "to", "what", "when", "where", "who", "will", "with", "the", "www", "before", ",", "after", ";", "like", "and", "such");
     
-    public static final String DBPEDIA_REDIRECTS_FILE       = DBpediaLuceneIndexGenerator.DIRECTORY + "redirects_en.nt";
-    public static final String DBPEDIA_LABELS_FILE          = DBpediaLuceneIndexGenerator.DIRECTORY + "labels_en.nt";
-    public static final String DBPEDIA_DISAMBIGUATIONS_FILE = DBpediaLuceneIndexGenerator.DIRECTORY + "disambiguations_en.nt";
-    public static final String SURFACE_FORMS_FILE           = DBpediaLuceneIndexGenerator.DIRECTORY + "en_surface_forms.tsv";
-    
     /**
      * 
      * @return
+     * @throws UnsupportedEncodingException 
      */
-    private Set<String> createConceptUris() {
+    private Set<String> createConceptUris() throws UnsupportedEncodingException {
         
         Set<String> conceptUris = new HashSet<String>();
         Set<String> badUris = new HashSet<String>();
-        badUris.addAll(NtripleUtil.getSubjectsFromNTriple(DBPEDIA_REDIRECTS_FILE, ""));
+        badUris.addAll(NtripleUtil.getSubjectsFromNTriple(DBpediaLuceneIndexGenerator.DBPEDIA_REDIRECTS_FILE, ""));
         logger.info("Finished reading redirect file for bad uri detection!");
-        badUris.addAll(NtripleUtil.getSubjectsFromNTriple(DBPEDIA_DISAMBIGUATIONS_FILE, ""));
+        badUris.addAll(NtripleUtil.getSubjectsFromNTriple(DBpediaLuceneIndexGenerator.DBPEDIA_DISAMBIGUATIONS_FILE, ""));
         logger.info("Finished reading disambiguations file for bad uri detection!");
         
         // every uri which looks like a good uri and is not in the disambiguations or redirect files is a concept uri
-        NxParser n3Parser = NtripleUtil.openNxParser(DBPEDIA_LABELS_FILE);
+        NxParser n3Parser = NtripleUtil.openNxParser(DBpediaLuceneIndexGenerator.FILTERED_LABELS_FILE);
         while (n3Parser.hasNext()) {
             
             Node[] node = n3Parser.next();
@@ -76,9 +76,9 @@ public class DBpediaSpotlightSurfaceFormGenerator {
         logger.info("There were " + LOWERCASE_STOPWORDS.size() + " lowercase stopwords found.");
     }
     
-    public Map<String,Set<String>> createSurfaceForms() {
+    public Map<String,Set<String>> createOrReadSurfaceForms() throws UnsupportedEncodingException {
         
-        if ( new File(SURFACE_FORMS_FILE).exists() ) return this.initializeSurfaceFormsFromFile();
+        if ( new File(DBpediaLuceneIndexGenerator.SURFACE_FORMS_FILE).exists() ) return this.initializeSurfaceFormsFromFile();
         
         initStopwords();
         Set<String> conceptUris = createConceptUris();
@@ -91,8 +91,8 @@ public class DBpediaSpotlightSurfaceFormGenerator {
 
         logger.info("Finished adding all conceptUris: " + surfaceForms.size());
         
-        List<String[]> subjectToObject = NtripleUtil.getSubjectAndObjectsFromNTriple(DBPEDIA_DISAMBIGUATIONS_FILE, "");
-        subjectToObject.addAll(NtripleUtil.getSubjectAndObjectsFromNTriple(DBPEDIA_REDIRECTS_FILE, ""));
+        List<String[]> subjectToObject = NtripleUtil.getSubjectAndObjectsFromNTriple(DBpediaLuceneIndexGenerator.DBPEDIA_DISAMBIGUATIONS_FILE, "");
+        subjectToObject.addAll(NtripleUtil.getSubjectAndObjectsFromNTriple(DBpediaLuceneIndexGenerator.DBPEDIA_REDIRECTS_FILE, ""));
         
         for ( String[] subjectAndObject : subjectToObject ) {
             
@@ -105,9 +105,9 @@ public class DBpediaSpotlightSurfaceFormGenerator {
         logger.info("Finished generation of surface forms.");
         
         // write the file
-        BufferedFileWriter writer = FileUtil.openWriter(SURFACE_FORMS_FILE, "UTF-8", WRITER_WRITE_MODE.OVERRIDE);
-        for (Map.Entry<String, Set<String>> entry : surfaceForms.entrySet())
-            writer.write(entry.getKey() + "\t" + StringUtils.join(entry.getValue(), "\t"));
+        BufferedFileWriter writer = FileUtil.openWriter(DBpediaLuceneIndexGenerator.SURFACE_FORMS_FILE, "UTF-8", WRITER_WRITE_MODE.OVERRIDE);
+        for (Map.Entry<String, Set<String>> entry : surfaceForms.entrySet()) 
+            writer.write(entry.getKey() + "\t" + StringUtils.join(addNonAccentVersion(entry.getValue()), "\t"));
         
         writer.close();
         logger.info("Finished writing of surface forms to disk.");
@@ -115,7 +115,22 @@ public class DBpediaSpotlightSurfaceFormGenerator {
         return surfaceForms;
     }
     
-    private static void addSurfaceForm(Map<String, Set<String>> surfaceForms, String key, String value) {
+    private static Set<String> addNonAccentVersion(Set<String> surfaceForms) {
+    	
+    	// remove all the accents in the surface forms and add that new label
+        Set<String> normalizedLabels = new HashSet<String>();
+        for ( String surfaceForm : surfaceForms) {
+        	
+    	    String normalized = Normalizer.normalize(surfaceForm, Normalizer.Form.NFD);
+    	    normalized = normalized.replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
+    	    if ( !normalized.equals(surfaceForm) ) normalizedLabels.add(normalized);
+        }
+        surfaceForms.addAll(normalizedLabels);
+        
+		return surfaceForms;
+	}
+    
+	private static void addSurfaceForm(Map<String, Set<String>> surfaceForms, String key, String value) {
 
         // clean and URL decode, whitespace removal
         String newSurfaceForm =  createCleanSurfaceForm(value);
@@ -163,7 +178,7 @@ public class DBpediaSpotlightSurfaceFormGenerator {
      */
     private static boolean isGoodUri(String uri) {
 
-        if ( uri.contains("List_of_") || uri.contains("(Disambiguation)") || uri.contains("%") || uri.contains("/") || uri.contains("%23") || uri.matches("^[\\W\\d]+$") ) {
+        if ( uri.contains("Liste_") || uri.contains("(Begriffsklärung)") || uri.contains("List_of_") || uri.contains("(Disambiguation)") || uri.contains("/") || uri.contains("%23") || uri.matches("^[\\W\\d]+$") ) {
             
             logger.log(Level.FINEST, "Uri: <" + uri + "> is not a good uri! / or %23 or regex");
             return false;
@@ -199,7 +214,7 @@ public class DBpediaSpotlightSurfaceFormGenerator {
         
         logger.info("Intializing surface forms from file...");
         
-        List<String> surfaceForms    = FileUtil.readFileInList(SURFACE_FORMS_FILE, "UTF-8");
+        List<String> surfaceForms    = FileUtil.readFileInList(DBpediaLuceneIndexGenerator.SURFACE_FORMS_FILE, "UTF-8");
         Map<String,Set<String>> urisToLabels = new HashMap<String,Set<String>>(); 
         
         // initialize the surface forms from dbpedia spotlight 

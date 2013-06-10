@@ -1,6 +1,12 @@
+package de.aksw;
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.text.MessageFormat;
+import java.text.Normalizer;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -22,6 +28,8 @@ import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.util.Version;
+import org.semanticweb.yars.nx.Node;
+import org.semanticweb.yars.nx.parser.NxParser;
 
 import com.hp.hpl.jena.query.Query;
 import com.hp.hpl.jena.query.QueryExecution;
@@ -31,19 +39,33 @@ import com.hp.hpl.jena.query.QuerySolution;
 import com.hp.hpl.jena.query.ResultSet;
 import com.hp.hpl.jena.sparql.engine.http.QueryEngineHTTP;
 
+import de.danielgerber.file.BufferedFileWriter;
+import de.danielgerber.file.FileUtil;
+import de.danielgerber.file.BufferedFileWriter.WRITER_WRITE_MODE;
+import de.danielgerber.rdf.NtripleUtil;
+
 /**
  * @author Daniel Gerber <dgerber@informatik.uni-leipzig.de>
  */
 public class DBpediaLuceneIndexGenerator {
 
-    // default values, should get overwritten with main args
+	// default values, should get overwritten with main args
     private static String GRAPH                 = "http://dbpedia.org";
     private static double RAM_BUFFER_MAX_SIZE   = 1024;
     private static boolean OVERWRITE_INDEX      = true;
+    private static Boolean FILTER_SURFACE_FORMS = false;
     public static String DIRECTORY              = "";
+    public static String LANGUAGE 				= null;
     private static String INDEX_DIRECTORY       = "";
     private static String SPARQL_ENDPOINT       = "http://localhost:8890/sparql";
     private static IndexWriter writer;
+    
+    public static String DBPEDIA_REDIRECTS_FILE       = null;
+    public static String DBPEDIA_LABELS_FILE          = null;
+    public static String DBPEDIA_DISAMBIGUATIONS_FILE = null;
+    public static String SURFACE_FORMS_FILE           = null;
+    public static String FILTERED_LABELS_FILE		  = null;
+	public static String INTER_LANGUAGE_LINKS_FILE	  = null;
     
     /**
      * @param args
@@ -54,20 +76,58 @@ public class DBpediaLuceneIndexGenerator {
         
         for (int i = 0; i < args.length ; i = i + 2) {
             
-            if ( args[i].equals("-o") ) OVERWRITE_INDEX     = Boolean.valueOf(args[i+1]);
-            if ( args[i].equals("-b") ) RAM_BUFFER_MAX_SIZE = Double.valueOf(args[i+1]);
-            if ( args[i].equals("-d") ) DIRECTORY           = args[i+1];
-            if ( args[i].equals("-i") ) INDEX_DIRECTORY     = args[i+1];
-            if ( args[i].equals("-s") ) SPARQL_ENDPOINT     = args[i+1];
-            if ( args[i].equals("-g") ) GRAPH               = args[i+1];
-
-            // we need to break here, because after the step we need to import the stuff to virtuoso
-            if ( args[i].equals("-f") && Boolean.valueOf(args[i+1]) ) {
-                
-                FilterBadUris.main(null);
-                return;
-            }
+            if ( args[i].equals("-o") ) OVERWRITE_INDEX     	= Boolean.valueOf(args[i+1]);
+            if ( args[i].equals("-b") ) RAM_BUFFER_MAX_SIZE 	= Double.valueOf(args[i+1]);
+            if ( args[i].equals("-d") ) DIRECTORY           	= args[i+1];
+            if ( args[i].equals("-i") ) INDEX_DIRECTORY     	= args[i+1];
+            if ( args[i].equals("-s") ) SPARQL_ENDPOINT     	= args[i+1];
+            if ( args[i].equals("-g") ) GRAPH               	= args[i+1];
+            if ( args[i].equals("-l") ) LANGUAGE            	= args[i+1];
+			if ( args[i].equals("-f") ) FILTER_SURFACE_FORMS	= new Boolean(args[i+1]);
+            
+            DBPEDIA_REDIRECTS_FILE       = DBpediaLuceneIndexGenerator.DIRECTORY + "redirects_" + LANGUAGE + ".ttl";
+            DBPEDIA_LABELS_FILE          = DBpediaLuceneIndexGenerator.DIRECTORY + "labels_" + LANGUAGE + ".ttl";
+            DBPEDIA_DISAMBIGUATIONS_FILE = DBpediaLuceneIndexGenerator.DIRECTORY + "disambiguations_" + LANGUAGE + ".ttl";
+            SURFACE_FORMS_FILE           = DBpediaLuceneIndexGenerator.DIRECTORY + LANGUAGE + "_surface_forms.tsv";
+            FILTERED_LABELS_FILE		 = DBpediaLuceneIndexGenerator.DIRECTORY + "labels_" + LANGUAGE + "_filtered.ttl";
+            INTER_LANGUAGE_LINKS_FILE    = DBpediaLuceneIndexGenerator.DIRECTORY + "interlanguage_links_" + LANGUAGE + ".ttl";
         }
+        
+        DBpediaSpotlightSurfaceFormGenerator surfaceFormGenerator = new DBpediaSpotlightSurfaceFormGenerator();
+        
+        // we need to break here, because after the step we need to import the stuff to virtuoso
+        if ( FILTER_SURFACE_FORMS ) {
+            
+        	System.out.println("Starting to filter labels_" + LANGUAGE + ".uri!");
+            Set<String> badUris = new HashSet<String>();
+            badUris.addAll(NtripleUtil.getSubjectsFromNTriple(DBPEDIA_REDIRECTS_FILE, ""));
+            System.out.println("Finished reading bad redirect uris!");
+            badUris.addAll(NtripleUtil.getSubjectsFromNTriple(DBPEDIA_DISAMBIGUATIONS_FILE, ""));
+            System.out.println("Finished reading bad disambiguations uris!");
+            
+            // write the file
+            BufferedFileWriter writer = FileUtil.openWriter(FILTERED_LABELS_FILE, "UTF-8", WRITER_WRITE_MODE.OVERRIDE);
+            System.out.println("Writing filtered labels file: " + FILTERED_LABELS_FILE);
+            NxParser n3Parser = NtripleUtil.openNxParser(DBPEDIA_LABELS_FILE);
+            while (n3Parser.hasNext()) {
+                
+                Node[] node = n3Parser.next();
+                String subjectUri = node[0].toString();
+                
+                if ( !badUris.contains(subjectUri) ) {
+                    
+                    writer.write(node[0].toN3() + " " + node[1].toN3() + " " + node[2].toN3() + " .");
+                }
+            }
+            
+            writer.close();
+            
+            // generate the surface forms (and save them to the file) or load them from a file
+            surfaceFormGenerator.createOrReadSurfaceForms();
+            
+            return;
+        }
+        
         
         System.out.println("Override-Index: " + OVERWRITE_INDEX);
         System.out.println("RAM-Buffer-Max-Size: " + RAM_BUFFER_MAX_SIZE);
@@ -83,10 +143,9 @@ public class DBpediaLuceneIndexGenerator {
         indexWriterConfig.setOpenMode(OVERWRITE_INDEX || !indexGenerator.isIndexExisting(INDEX_DIRECTORY) ? OpenMode.CREATE : OpenMode.APPEND);
         writer = indexGenerator.createIndex(INDEX_DIRECTORY, indexWriterConfig);
 
-        // generate the surface forms (and save them to the file) or load them from a file
-        DBpediaSpotlightSurfaceFormGenerator surfaceFormGenerator = new DBpediaSpotlightSurfaceFormGenerator();
-        Map<String,Set<String>> surfaceForms = surfaceFormGenerator.createSurfaceForms();
-
+        Map<String,Set<String>> surfaceForms = surfaceFormGenerator.createOrReadSurfaceForms();
+        Map<String,String> language2dbpediaLinks = createInterLanguageLinks();
+        
         Set<IndexDocument> indexDocuments = new HashSet<IndexDocument>();
         
         // time measurements
@@ -98,7 +157,7 @@ public class DBpediaLuceneIndexGenerator {
         while ( surfaceFormIterator.hasNext() ) {
             
             Map.Entry<String,Set<String>> entry = surfaceFormIterator.next();
-            indexDocuments.add(indexGenerator.queryAttributesForUri(entry.getKey(), entry.getValue()));
+            indexDocuments.add(indexGenerator.queryAttributesForUri(entry.getKey(), entry.getValue(), language2dbpediaLinks));
             
             // improve speed through batch save
             if ( ++counter % 10000 == 0 ) {
@@ -115,7 +174,26 @@ public class DBpediaLuceneIndexGenerator {
         writer.close();
     }
 
-    /**
+    private static Map<String, String> createInterLanguageLinks() {
+    	
+    	Map<String,String> languageToDbpediaUris = new HashMap<String, String>();
+    	
+    	if ( LANGUAGE.equals("en") ) return languageToDbpediaUris;
+    	
+    	NxParser n3Parser = NtripleUtil.openNxParser(DBpediaLuceneIndexGenerator.INTER_LANGUAGE_LINKS_FILE);
+        while (n3Parser.hasNext()) {
+            
+            Node[] node = n3Parser.next();
+            String subjectUri = node[0].toString();
+            String objectUri = node[2].toString();
+            
+            if ( objectUri.startsWith("http://dbpedia.org") ) languageToDbpediaUris.put(subjectUri, objectUri);
+        }
+    	
+		return languageToDbpediaUris;
+	}
+
+	/**
      * Adds a set of index documents in batch mode to the index
      * Uris and image urls as well as type Uris are not analyzed.
      * Termvectors are not stored for anything. Everything else is
@@ -136,6 +214,7 @@ public class DBpediaLuceneIndexGenerator {
             
             Document luceneDocument = new Document();
             luceneDocument.add(new Field("uri", indexDocument.getUri(), stringType));
+            luceneDocument.add(new Field("dbpediaUri", indexDocument.getCanonicalDBpediaUri(), stringType));
             luceneDocument.add(new Field("label", indexDocument.getLabel(), textType));
             luceneDocument.add(new Field("comment", indexDocument.getShortAbstract(), textType));
             luceneDocument.add(new Field("imageURL", indexDocument.getImageUri(), stringType));
@@ -144,7 +223,7 @@ public class DBpediaLuceneIndexGenerator {
             for ( String type : indexDocument.getTypes() )
                 luceneDocument.add(new Field("types", type, stringType));
             for ( String surfaceForm : indexDocument.getSurfaceForms() )
-                luceneDocument.add(new Field("surfaceForms", surfaceForm, textType));
+                luceneDocument.add(new Field("surfaceForms", surfaceForm, stringType));
                     
             luceneDocuments.add(luceneDocument);
         }
@@ -188,9 +267,11 @@ public class DBpediaLuceneIndexGenerator {
      * 
      * @param uri the uri of the reosurce
      * @param surfaceForms the surface forms of this resource
+     * @param language2dbpediaLinks 
      * @return a document ready to be indexed
+     * @throws UnsupportedEncodingException 
      */
-    private IndexDocument queryAttributesForUri(String uri, Set<String> surfaceForms) {
+    private IndexDocument queryAttributesForUri(String uri, Set<String> surfaceForms, Map<String, String> language2dbpediaLinks) throws UnsupportedEncodingException {
 
         String query =
                 String.format(
@@ -215,11 +296,12 @@ public class DBpediaLuceneIndexGenerator {
             // those values do get repeated, we need them to set only one time
             if ( document.getUri().isEmpty() ) {
                 
-                document.setUri(uri);
+                document.setUri(URLDecoder.decode(uri, "UTF-8"));
                 document.setLabel(solution.get("label").asLiteral().getLexicalForm());
                 document.setPageRank(solution.get("rank") != null ? Integer.valueOf(solution.get("rank").toString().replace("^^http://www.w3.org/2001/XMLSchema#integer", "")) : 0);
                 document.setImageUri(solution.get("imageUrl") != null ? solution.get("imageUrl").toString() : "");
                 document.setShortAbstract(solution.get("abstract") != null ? solution.get("abstract").asLiteral().getLexicalForm() : "");
+                document.setCanonicalDBpediaUri(language2dbpediaLinks.containsKey(uri) ? language2dbpediaLinks.get(uri) : "");
                 
                 try {
 					double disambiguationScore = getAprioriScore1(uri, SPARQL_ENDPOINT, GRAPH);

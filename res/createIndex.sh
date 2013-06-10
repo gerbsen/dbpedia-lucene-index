@@ -10,16 +10,17 @@ virt_isql="/usr/local/bin/isql"
 virt_port=1111
 virt_userName="dba"
 virt_passWord="dba"
-virt_graphName="http://dbpedia.org"
+virt_graphName="http://de.dbpedia.org"
 virt_sparql="http://localhost:8890/sparql"
 
 fctVad="/usr/local/Cellar/virtuoso/6.1.5/share/virtuoso/vad/fct_dav.vad"
 
-createGraph=false
-importData=false
-rankData=false
+createGraph=true
+importData=true
+rankData=true
+language=de
 
-indexDir="/Users/gerb/Development/workspaces/experimental/solr/dbpedia_resources/data/index"
+indexDir="/Users/gerb/Development/workspaces/experimental/solr_4/dbpedia_resources_38_score_accent/index/index	"
 
 # splits files and imports them into virtuoso
 function importFile() {
@@ -38,18 +39,19 @@ function download() {
     
     # only download the files if they are not already there
     if [ ! -f $1 ]; then
-        wget "http://downloads.dbpedia.org/3.7/en/$1.bz2"
+        wget "http://downloads.dbpedia.org/3.8/$language/$1.bz2"
         bunzip2 $1".bz2"
     fi
 }
     
-download instance_types_en.nt
-download mappingbased_properties_en.nt
-download images_en.nt
-download short_abstracts_en.nt
-download labels_en.nt
-download disambiguations_en.nt
-download redirects_en.nt
+download instance_types_$language.ttl
+download mappingbased_properties_$language.ttl
+download images_$language.ttl
+download short_abstracts_$language.ttl
+download labels_$language.ttl
+download disambiguations_$language.ttl
+download redirects_$language.ttl
+download interlanguage_links_$language.ttl
 
 if $createGraph ; then
     # create the graph where the files get imported into
@@ -59,27 +61,27 @@ if $createGraph ; then
 fi 
 
 # we need to remove all the redirect and disambiguation uris
-if [ ! -f labels_en_filtered.nt ]; then
+if [ ! -f labels_$language_filtered.ttl ]; then
     # -f: filter the bad uri's, no need for them to be in the index
-	java -jar -Xmx2G indexCreator.jar -f true       
+	java -jar -Xmx4G indexCreator.jar -d "`pwd`/" -f true -l $language
 fi
 
 if $importData ; then
     
     # load data: filtered labels
-    importFile labels_en_filtered.nt
+    importFile "labels_" $language "_filtered.ttl"
 
     # load data: images 
-    importFile images_en.nt
+    importFile "images_$language.ttl"
 
     # load data: rdf:type statements    
-    importFile instance_types_en.nt
+    importFile "instance_types_$language.ttl"
 
     # load data: owl:comment statements
-    importFile short_abstracts_en.nt
+    importFile "short_abstracts_$language.ttl"
 
     # load data: links between resources, needed for page-rank
-    importFile mappingbased_properties_en.nt
+    importFile "mappingbased_properties_$language.ttl"
 fi
 
 if $rankData ; then
@@ -94,4 +96,4 @@ fi
 # -d: path to index dir, needs trailing slash
 # -s: sparql endpoint, should be local because we make 2,7mio queries :)
 # -g: graph name  
-java -jar -Xmx4G indexCreator.jar -o true -b 1024 -d "`pwd`/" -i $indexDir -s $virt_sparql -g $virt_graphName
+java -jar -Xmx10G indexCreator.jar -o true -b 1024 -d "`pwd`/" -i $indexDir -s $virt_sparql -g $virt_graphName -l $language

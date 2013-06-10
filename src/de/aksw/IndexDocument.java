@@ -1,3 +1,4 @@
+package de.aksw;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -20,8 +21,16 @@ public class IndexDocument {
     private Integer pagerank = 0;
     private Double disambiguationScore = 0d;
     private String shortAbstract = "";
+	private String dbpediaUri = "";
     
     /**
+	 * @return the dbpediaUri
+	 */
+	public String getCanonicalDBpediaUri() {
+		return dbpediaUri;
+	}
+
+	/**
      * @return the uri
      */
     public String getUri() {
@@ -139,5 +148,10 @@ public class IndexDocument {
     
     public void setDisambiguationScore(Double disambiguationScore) {
 		this.disambiguationScore = disambiguationScore;
+	}
+
+	public void setCanonicalDBpediaUri(String uri) {
+		
+		this.dbpediaUri  = uri;
 	}
 }

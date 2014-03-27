@@ -1,10 +1,8 @@
 package de.aksw;
 import java.io.File;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.text.MessageFormat;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -12,10 +10,8 @@ import java.util.Set;
 
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.DoubleField;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.IntField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.CorruptIndexException;
@@ -29,10 +25,6 @@ import org.apache.lucene.util.Version;
 import org.semanticweb.yars.nx.Node;
 import org.semanticweb.yars.nx.parser.NxParser;
 
-import com.hp.hpl.jena.query.Query;
-import com.hp.hpl.jena.query.QueryExecution;
-import com.hp.hpl.jena.query.QueryExecutionFactory;
-import com.hp.hpl.jena.query.QueryFactory;
 import com.hp.hpl.jena.query.QuerySolution;
 import com.hp.hpl.jena.query.ResultSet;
 import com.hp.hpl.jena.sparql.engine.http.QueryEngineHTTP;
@@ -45,7 +37,7 @@ import de.danielgerber.rdf.NtripleUtil;
 /**
  * @author Daniel Gerber <dgerber@informatik.uni-leipzig.de>
  */
-public class DBpediaLuceneIndexGenerator {
+public class DBpediaLuceneIndexGeneratorLight {
 
 	// default values, should get overwritten with main args
     private static String GRAPH                 = "http://dbpedia.org";
@@ -63,7 +55,6 @@ public class DBpediaLuceneIndexGenerator {
     public static String DBPEDIA_DISAMBIGUATIONS_FILE = null;
     public static String SURFACE_FORMS_FILE           = null;
     public static String FILTERED_LABELS_FILE		  = null;
-	public static String INTER_LANGUAGE_LINKS_FILE	  = null;
     
     /**
      * @param args
@@ -83,12 +74,17 @@ public class DBpediaLuceneIndexGenerator {
             if ( args[i].equals("-l") ) LANGUAGE            	= args[i+1];
 			if ( args[i].equals("-f") ) FILTER_SURFACE_FORMS	= new Boolean(args[i+1]);
             
-            DBPEDIA_REDIRECTS_FILE       = DBpediaLuceneIndexGenerator.DIRECTORY + "redirects_" + LANGUAGE + ".ttl";
-            DBPEDIA_LABELS_FILE          = DBpediaLuceneIndexGenerator.DIRECTORY + "labels_" + LANGUAGE + ".ttl";
-            DBPEDIA_DISAMBIGUATIONS_FILE = DBpediaLuceneIndexGenerator.DIRECTORY + "disambiguations_" + LANGUAGE + ".ttl";
-            SURFACE_FORMS_FILE           = DBpediaLuceneIndexGenerator.DIRECTORY + LANGUAGE + "_surface_forms.tsv";
-            FILTERED_LABELS_FILE		 = DBpediaLuceneIndexGenerator.DIRECTORY + "labels_" + LANGUAGE + "_filtered.ttl";
-            INTER_LANGUAGE_LINKS_FILE    = DBpediaLuceneIndexGenerator.DIRECTORY + "interlanguage_links_" + LANGUAGE + ".ttl";
+            DBPEDIA_REDIRECTS_FILE       = DBpediaLuceneIndexGeneratorLight.DIRECTORY + "redirects_" + LANGUAGE + ".ttl";
+            DBPEDIA_LABELS_FILE          = DBpediaLuceneIndexGeneratorLight.DIRECTORY + "labels_" + LANGUAGE + ".ttl";
+            DBPEDIA_DISAMBIGUATIONS_FILE = DBpediaLuceneIndexGeneratorLight.DIRECTORY + "disambiguations_" + LANGUAGE + ".ttl";
+            SURFACE_FORMS_FILE           = DBpediaLuceneIndexGeneratorLight.DIRECTORY + LANGUAGE + "_surface_forms.tsv";
+            FILTERED_LABELS_FILE		 = DBpediaLuceneIndexGeneratorLight.DIRECTORY + "labels_" + LANGUAGE + "_filtered.ttl";
+            
+            DBpediaLuceneIndexGenerator.DBPEDIA_REDIRECTS_FILE       = DBpediaLuceneIndexGeneratorLight.DIRECTORY + "redirects_" + LANGUAGE + ".ttl";
+            DBpediaLuceneIndexGenerator.DBPEDIA_LABELS_FILE          = DBpediaLuceneIndexGeneratorLight.DIRECTORY + "labels_" + LANGUAGE + ".ttl";
+            DBpediaLuceneIndexGenerator.DBPEDIA_DISAMBIGUATIONS_FILE = DBpediaLuceneIndexGeneratorLight.DIRECTORY + "disambiguations_" + LANGUAGE + ".ttl";
+            DBpediaLuceneIndexGenerator.SURFACE_FORMS_FILE           = DBpediaLuceneIndexGeneratorLight.DIRECTORY + LANGUAGE + "_surface_forms.tsv";
+            DBpediaLuceneIndexGenerator.FILTERED_LABELS_FILE		 = DBpediaLuceneIndexGeneratorLight.DIRECTORY + "labels_" + LANGUAGE + "_filtered.ttl";
         }
         
         DBpediaSpotlightSurfaceFormGenerator surfaceFormGenerator = new DBpediaSpotlightSurfaceFormGenerator();
@@ -133,18 +129,17 @@ public class DBpediaLuceneIndexGenerator {
         System.out.println("SPARQL-Endpoint: " + SPARQL_ENDPOINT);
         System.out.println("GRAPH: " + GRAPH);
         
-        DBpediaLuceneIndexGenerator indexGenerator = new DBpediaLuceneIndexGenerator();
+        DBpediaLuceneIndexGeneratorLight indexGenerator = new DBpediaLuceneIndexGeneratorLight();
         
         // create the index writer configuration and create a new index writer
-        IndexWriterConfig indexWriterConfig = new IndexWriterConfig(Version.LUCENE_46, new StandardAnalyzer(Version.LUCENE_46));
+        IndexWriterConfig indexWriterConfig = new IndexWriterConfig(Version.LUCENE_40, new StandardAnalyzer(Version.LUCENE_40));
         indexWriterConfig.setRAMBufferSizeMB(RAM_BUFFER_MAX_SIZE);
         indexWriterConfig.setOpenMode(OVERWRITE_INDEX || !indexGenerator.isIndexExisting(INDEX_DIRECTORY) ? OpenMode.CREATE : OpenMode.APPEND);
         writer = indexGenerator.createIndex(INDEX_DIRECTORY, indexWriterConfig);
 
         Map<String,Set<String>> surfaceForms = surfaceFormGenerator.createOrReadSurfaceForms();
-        Map<String,String> language2dbpediaLinks = createInterLanguageLinks();
         
-        Set<IndexDocument> indexDocuments = new HashSet<IndexDocument>();
+        Set<IndexDocumentLight> indexDocuments = new HashSet<IndexDocumentLight>();
         
         // time measurements
         int counter = 0;
@@ -154,42 +149,27 @@ public class DBpediaLuceneIndexGenerator {
         Iterator<Map.Entry<String,Set<String>>> surfaceFormIterator = surfaceForms.entrySet().iterator();
         while ( surfaceFormIterator.hasNext() ) {
             
-            Map.Entry<String,Set<String>> entry = surfaceFormIterator.next();
-            indexDocuments.add(indexGenerator.queryAttributesForUri(entry.getKey(), entry.getValue(), language2dbpediaLinks));
-            
-            // improve speed through batch save
-            if ( ++counter % 10000 == 0 ) {
+            try {
+				Map.Entry<String,Set<String>> entry = surfaceFormIterator.next();
+				indexDocuments.add(indexGenerator.queryAttributesForUri(entry.getKey(), entry.getValue()));
+				
+				// improve speed through batch save
+				if ( ++counter % 10000 == 0 ) {
 
-                indexGenerator.addIndexDocuments(indexDocuments);
-                System.out.println("Done: " + counter + "/" + total + " " + MessageFormat.format("{0,number,#.##%}", (double) counter / (double) total) + " in " + (System.currentTimeMillis() - start) + "ms" );
-                start = System.currentTimeMillis();
-                indexDocuments = new HashSet<IndexDocument>();
-            }
+				    indexGenerator.addIndexDocuments(indexDocuments);
+				    System.out.println("Done: " + counter + "/" + total + " " + MessageFormat.format("{0,number,#.##%}", (double) counter / (double) total) + " in " + (System.currentTimeMillis() - start) + "ms" );
+				    start = System.currentTimeMillis();
+				    indexDocuments = new HashSet<IndexDocumentLight>();
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
         }
         // write the last few items
         indexGenerator.addIndexDocuments(indexDocuments);
         
         writer.close();
     }
-
-    private static Map<String, String> createInterLanguageLinks() {
-    	
-    	Map<String,String> languageToDbpediaUris = new HashMap<String, String>();
-    	
-    	if ( LANGUAGE.equals("en") ) return languageToDbpediaUris;
-    	
-    	NxParser n3Parser = NtripleUtil.openNxParser(DBpediaLuceneIndexGenerator.INTER_LANGUAGE_LINKS_FILE);
-        while (n3Parser.hasNext()) {
-            
-            Node[] node = n3Parser.next();
-            String subjectUri = node[0].toString();
-            String objectUri = node[2].toString();
-            
-            if ( objectUri.startsWith("http://dbpedia.org") ) languageToDbpediaUris.put(subjectUri, objectUri);
-        }
-    	
-		return languageToDbpediaUris;
-	}
 
 	/**
      * Adds a set of index documents in batch mode to the index
@@ -201,23 +181,20 @@ public class DBpediaLuceneIndexGenerator {
      * @throws CorruptIndexException - index corrupted
      * @throws IOException - error
      */
-    private void addIndexDocuments(Set<IndexDocument> indexDocuments) throws CorruptIndexException, IOException {
+    private void addIndexDocuments(Set<IndexDocumentLight> indexDocuments) throws CorruptIndexException, IOException {
 
         Set<Document> luceneDocuments = new HashSet<Document>();
         FieldType stringType = new FieldType(StringField.TYPE_STORED);
         stringType.setStoreTermVectors(false);
         FieldType textType = new FieldType(TextField.TYPE_STORED);
         textType.setStoreTermVectors(false);
-        for ( IndexDocument indexDocument : indexDocuments ) {
+        for ( IndexDocumentLight indexDocument : indexDocuments ) {
             
             Document luceneDocument = new Document();
             luceneDocument.add(new Field("uri", indexDocument.getUri(), stringType));
-            luceneDocument.add(new Field("dbpediaUri", indexDocument.getCanonicalDBpediaUri(), stringType));
             luceneDocument.add(new Field("label", indexDocument.getLabel(), textType));
-            luceneDocument.add(new Field("comment", indexDocument.getShortAbstract(), textType));
-            luceneDocument.add(new Field("imageURL", indexDocument.getImageUri(), stringType));
-            luceneDocument.add(new IntField("pagerank", indexDocument.getPageRank(), Field.Store.YES));
-            luceneDocument.add(new DoubleField("disambiguationScore", indexDocument.getDisambiguationScore(), Field.Store.YES));
+            luceneDocument.add(new Field("short-abstract", indexDocument.getShortAbstract(), textType));
+            luceneDocument.add(new Field("long-abstract", indexDocument.getLongAbstract(), textType));
             for ( String type : indexDocument.getTypes() )
                 luceneDocument.add(new Field("types", type, stringType));
             for ( String surfaceForm : indexDocument.getSurfaceForms() )
@@ -228,32 +205,6 @@ public class DBpediaLuceneIndexGenerator {
         writer.addDocuments(luceneDocuments);
     }
     
-    public double getAprioriScore1(String uri, String endpoint, String graph) {
-
-        String query = "SELECT (COUNT(?s) AS ?cnt) WHERE {?s ?p <"+uri+">}";
-        Query sparqlQuery = QueryFactory.create(query);
-        QueryExecution qexec;
-        if (graph != null) {
-            qexec = QueryExecutionFactory.sparqlService(endpoint, sparqlQuery, graph);
-        } else {
-            qexec = QueryExecutionFactory.sparqlService(endpoint, sparqlQuery);
-        }
-        ResultSet results = qexec.execSelect();
-        int count = 0;
-        try {
-            while (results.hasNext()) {
-                QuerySolution soln = results.nextSolution();
-                count = soln.getLiteral("cnt").getInt();
-            }
-        }
-        catch(Exception e)
-        {
-            e.printStackTrace();
-        }
-        //logger.info(uri+" -> "+Math.log(count+1));
-        return Math.log(count+1);
-}
-
     /**
      * Queries a configured sparql endpoint for all information a document needs
      *  - rank
@@ -263,57 +214,53 @@ public class DBpediaLuceneIndexGenerator {
      *  - abstract 
      *  - types
      * 
-     * @param uri the URI of the resource
+     * @param uri the uri of the reosurce
      * @param surfaceForms the surface forms of this resource
      * @param language2dbpediaLinks 
      * @return a document ready to be indexed
-     * @throws UnsupportedEncodingException 
+     * @throws Exception 
      */
-    private IndexDocument queryAttributesForUri(String uri, Set<String> surfaceForms, Map<String, String> language2dbpediaLinks) throws UnsupportedEncodingException {
-
-        String query =
-                String.format(
-                "SELECT (<LONG::IRI_RANK> (<%s>)) as ?rank ?label ?imageUrl ?abstract ?types " +
-                "FROM <%s> " +
-                "WHERE { " +
-                "   OPTIONAL { <%s> <http://www.w3.org/2000/01/rdf-schema#label> ?label . } " +
-                "   OPTIONAL { <%s> <http://dbpedia.org/ontology/thumbnail> ?imageUrl . } " +
-                "   OPTIONAL { <%s> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?types . } " +
-                "   OPTIONAL { <%s> <http://www.w3.org/2000/01/rdf-schema#comment> ?abstract . } " +
-                "}", uri, GRAPH, uri, uri, uri, uri);
-        
+    private IndexDocumentLight queryAttributesForUri(String uri, Set<String> surfaceForms) throws Exception  {
+    	String query =
+		        String.format(
+		        "SELECT ?label ?short_abstract ?long_abstract ?types " +
+		        "FROM <%s> " +
+		        "WHERE { " +
+		        "   OPTIONAL { <%s> <http://www.w3.org/2000/01/rdf-schema#label> ?label . } " +
+		        "   OPTIONAL { <%s> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?types . } " +
+		        "   OPTIONAL { <%s> <http://www.w3.org/2000/01/rdf-schema#comment> ?short_abstract . } " +
+		        "   OPTIONAL { <%s> <http://dbpedia.org/ontology/abstract> ?long_abstract . } " +
+		        "}", GRAPH, uri, uri, uri, uri);
         // execute the query
-        IndexDocument document = new IndexDocument();
-        QueryEngineHTTP qexec = new QueryEngineHTTP(SPARQL_ENDPOINT, query);
-        ResultSet result = qexec.execSelect();
-        
-        while (result.hasNext()) {
-            
-            QuerySolution solution = result.next();
-            
-            // those values do get repeated, we need them to set only one time
-            if ( document.getUri().isEmpty() ) {
-                
-                document.setUri(URLDecoder.decode(uri, "UTF-8"));
-                document.setLabel(solution.get("label").asLiteral().getLexicalForm());
-                document.setPageRank(solution.get("rank") != null ? Integer.valueOf(solution.get("rank").toString().replace("^^http://www.w3.org/2001/XMLSchema#integer", "")) : 0);
-                document.setImageUri(solution.get("imageUrl") != null ? solution.get("imageUrl").toString() : "");
-                document.setShortAbstract(solution.get("abstract") != null ? solution.get("abstract").asLiteral().getLexicalForm() : "");
-                document.setCanonicalDBpediaUri(language2dbpediaLinks.containsKey(uri) ? language2dbpediaLinks.get(uri) : "");
-                
-                try {
-					double disambiguationScore = getAprioriScore1(uri, SPARQL_ENDPOINT, GRAPH);
-					document.setDisambiguationScore(disambiguationScore);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-            }
-            // there might be different types
-            if (solution.get("types") != null) document.getTypes().add(solution.get("types").toString());
-        }
-        document.setSurfaceForms(surfaceForms == null ? new HashSet<String>() : surfaceForms);
-        
-        return document;
+		IndexDocumentLight document;
+		try {
+			document = new IndexDocumentLight();
+			QueryEngineHTTP qexec = new QueryEngineHTTP(SPARQL_ENDPOINT, query);
+			ResultSet result = qexec.execSelect();
+			
+			while (result.hasNext()) {
+			    
+			    QuerySolution solution = result.next();
+			    
+			    // those values do get repeated, we need them to set only one time
+			    if ( document.getUri().isEmpty() ) {
+			        
+			        document.setUri(URLDecoder.decode(uri, "UTF-8"));
+			        document.setLabel(solution.get("label").asLiteral().getLexicalForm());
+			        document.setShortAbstract(solution.get("short_abstract") != null ? solution.get("short_abstract").asLiteral().getLexicalForm() : "");
+			        document.setLongAbstract(solution.get("long_abstract") != null ? solution.get("long_abstract").asLiteral().getLexicalForm() : "");
+			        
+			    }
+			    // there might be different types
+			    if (solution.get("types") != null) document.getTypes().add(solution.get("types").toString());
+			}
+			document.setSurfaceForms(surfaceForms == null ? new HashSet<String>() : surfaceForms);
+			return document;
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.out.println(query);
+			throw e;
+		}
     }
     
     /**

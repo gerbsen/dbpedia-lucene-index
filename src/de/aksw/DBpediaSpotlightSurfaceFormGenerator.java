@@ -228,11 +228,12 @@ public class DBpediaSpotlightSurfaceFormGenerator {
                 
                 if ( surfaceForm.length() <= MAXIMUM_SURFACE_FORM_LENGHT ) filteredSurfaceForms.add(surfaceForm);
             }
-            urisToLabels.put(lineParts[0], filteredSurfaceForms);
-            urisToLabels.put(lineParts[0].replace("http://en.", "http://"), filteredSurfaceForms);
+            urisToLabels.put(lineParts[0].replace("http://en.", "http://").replace("http://dbpedia.org/resource/", ""), filteredSurfaceForms);
+//            urisToLabels.put(lineParts[0], filteredSurfaceForms);
+//            urisToLabels.put(lineParts[0].replace("http://en.", "http://"), filteredSurfaceForms);
         }
         logger.info("Finished intializing surface forms! Found " + urisToLabels.size() + " dbpedia spotlight surfaceforms in file");
-        
+        //for(String uri:urisToLabels.keySet()) ... "http://dbpedia.org/resource/"
         return urisToLabels;
     }
 }

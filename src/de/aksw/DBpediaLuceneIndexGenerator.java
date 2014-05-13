@@ -9,7 +9,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleField;
@@ -28,15 +27,14 @@ import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.util.Version;
 import org.semanticweb.yars.nx.Node;
 import org.semanticweb.yars.nx.parser.NxParser;
-
 import com.hp.hpl.jena.query.Query;
 import com.hp.hpl.jena.query.QueryExecution;
 import com.hp.hpl.jena.query.QueryExecutionFactory;
 import com.hp.hpl.jena.query.QueryFactory;
 import com.hp.hpl.jena.query.QuerySolution;
 import com.hp.hpl.jena.query.ResultSet;
+import com.hp.hpl.jena.rdf.model.RDFNode;
 import com.hp.hpl.jena.sparql.engine.http.QueryEngineHTTP;
-
 import de.danielgerber.file.BufferedFileWriter;
 import de.danielgerber.file.BufferedFileWriter.WRITER_WRITE_MODE;
 import de.danielgerber.file.FileUtil;
@@ -47,9 +45,10 @@ import de.danielgerber.rdf.NtripleUtil;
  */
 public class DBpediaLuceneIndexGenerator {
 
+	private static final int BATCH_SIZE = 10000;
 	// default values, should get overwritten with main args
     private static String GRAPH                 = "http://dbpedia.org";
-    private static double RAM_BUFFER_MAX_SIZE   = 1024;
+    private static double RAM_BUFFER_MAX_SIZE   = 128;
     private static boolean OVERWRITE_INDEX      = true;
     private static Boolean FILTER_SURFACE_FORMS = false;
     public static String DIRECTORY              = "";
@@ -144,7 +143,7 @@ public class DBpediaLuceneIndexGenerator {
         Map<String,Set<String>> surfaceForms = surfaceFormGenerator.createOrReadSurfaceForms();
         Map<String,String> language2dbpediaLinks = createInterLanguageLinks();
         
-        Set<IndexDocument> indexDocuments = new HashSet<IndexDocument>();
+        Set<IndexDocument> indexDocuments = new HashSet<IndexDocument>((int)(BATCH_SIZE*1.4));
         
         // time measurements
         int counter = 0;
@@ -155,15 +154,22 @@ public class DBpediaLuceneIndexGenerator {
         while ( surfaceFormIterator.hasNext() ) {
             
             Map.Entry<String,Set<String>> entry = surfaceFormIterator.next();
-            indexDocuments.add(indexGenerator.queryAttributesForUri(entry.getKey(), entry.getValue(), language2dbpediaLinks));
+            String uri = entry.getKey();
+//            if(uri.startsWith(""))
+            try
+            {
+            	indexDocuments.add(indexGenerator.queryAttributesForUri("http://dbpedia.org/resource/"+entry.getKey(), entry.getValue(), language2dbpediaLinks));
+            }
+            catch(NoLabelException e) {System.out.println(e.getMessage());}
+           
             
             // improve speed through batch save
-            if ( ++counter % 10000 == 0 ) {
+            if ( ++counter % BATCH_SIZE == 0 ) {
 
                 indexGenerator.addIndexDocuments(indexDocuments);
                 System.out.println("Done: " + counter + "/" + total + " " + MessageFormat.format("{0,number,#.##%}", (double) counter / (double) total) + " in " + (System.currentTimeMillis() - start) + "ms" );
                 start = System.currentTimeMillis();
-                indexDocuments = new HashSet<IndexDocument>();
+                indexDocuments = new HashSet<IndexDocument>((int)(BATCH_SIZE*1.4));
             }
         }
         // write the last few items
@@ -254,6 +260,14 @@ public class DBpediaLuceneIndexGenerator {
         return Math.log(count+1);
 }
 
+    private class NoLabelException extends Exception
+    {
+    	public NoLabelException(String uri)
+		{
+			super("No label found for uri "+uri);
+		}
+    }
+    
     /**
      * Queries a configured sparql endpoint for all information a document needs
      *  - rank
@@ -268,8 +282,9 @@ public class DBpediaLuceneIndexGenerator {
      * @param language2dbpediaLinks 
      * @return a document ready to be indexed
      * @throws UnsupportedEncodingException 
+     * @throws NoLabelException 
      */
-    private IndexDocument queryAttributesForUri(String uri, Set<String> surfaceForms, Map<String, String> language2dbpediaLinks) throws UnsupportedEncodingException {
+    private IndexDocument queryAttributesForUri(String uri, Set<String> surfaceForms, Map<String, String> language2dbpediaLinks) throws UnsupportedEncodingException, NoLabelException {
 
         String query =
                 String.format(
@@ -294,8 +309,10 @@ public class DBpediaLuceneIndexGenerator {
             // those values do get repeated, we need them to set only one time
             if ( document.getUri().isEmpty() ) {
                 
-                document.setUri(URLDecoder.decode(uri, "UTF-8"));
-                document.setLabel(solution.get("label").asLiteral().getLexicalForm());
+                document.setUri(URLDecoder.decode(uri, "UTF-8"));                
+                RDFNode label = solution.get("label");
+                if(label==null) throw new NoLabelException(uri);
+                document.setLabel(label.asLiteral().getLexicalForm());
                 document.setPageRank(solution.get("rank") != null ? Integer.valueOf(solution.get("rank").toString().replace("^^http://www.w3.org/2001/XMLSchema#integer", "")) : 0);
                 document.setImageUri(solution.get("imageUrl") != null ? solution.get("imageUrl").toString() : "");
                 document.setShortAbstract(solution.get("abstract") != null ? solution.get("abstract").asLiteral().getLexicalForm() : "");

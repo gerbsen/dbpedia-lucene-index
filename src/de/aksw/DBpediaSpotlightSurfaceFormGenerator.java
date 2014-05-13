@@ -1,5 +1,7 @@
 package de.aksw;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -211,26 +213,47 @@ public class DBpediaSpotlightSurfaceFormGenerator {
     }
     
     private Map<String,Set<String>> initializeSurfaceFormsFromFile() {
-        
         logger.info("Intializing surface forms from file...");
-        
-        List<String> surfaceForms    = FileUtil.readFileInList(DBpediaLuceneIndexGenerator.SURFACE_FORMS_FILE, "UTF-8");
         Map<String,Set<String>> urisToLabels = new HashMap<String,Set<String>>(); 
-        
-        // initialize the surface forms from dbpedia spotlight 
-        for ( String line : surfaceForms ) {
-            
-            String[] lineParts = line.split("\t");
-            String[] surfaceFormsPart = Arrays.copyOfRange(lineParts, 1, lineParts.length);
-            Set<String> filteredSurfaceForms = new HashSet<String>();
-            
-            for ( String surfaceForm : surfaceFormsPart) {
-                
-                if ( surfaceForm.length() <= MAXIMUM_SURFACE_FORM_LENGHT ) filteredSurfaceForms.add(surfaceForm);
-            }
-            urisToLabels.put(lineParts[0], filteredSurfaceForms);
-            urisToLabels.put(lineParts[0].replace("http://en.", "http://"), filteredSurfaceForms);
-        }
+        try(TSVReader tsvReader = new TSVReader(new File(DBpediaLuceneIndexGenerator.SURFACE_FORMS_FILE));) {
+			String[] tokens;
+			String uri;
+			Set<String> filteredSurfaceForms;
+			while(tsvReader.hasNextTokens()){
+				tokens = tsvReader.nextTokens();
+				uri = tokens[0];
+				filteredSurfaceForms = new HashSet<String>();
+				String surfaceForm;
+				for (int i = 1; i < tokens.length; i++) {
+					surfaceForm = tokens[i];
+					if ( surfaceForm.length() <= MAXIMUM_SURFACE_FORM_LENGHT ) filteredSurfaceForms.add(surfaceForm);
+				}
+				urisToLabels.put(uri, filteredSurfaceForms);
+			    urisToLabels.put(uri.replace("http://en.", "http://"), filteredSurfaceForms);
+			}
+			
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+//        List<String> surfaceForms    = FileUtil.readFileInList(DBpediaLuceneIndexGenerator.SURFACE_FORMS_FILE, "UTF-8");
+//        Map<String,Set<String>> urisToLabels = new HashMap<String,Set<String>>(); 
+//        
+//        // initialize the surface forms from dbpedia spotlight 
+//        for ( String line : surfaceForms ) {
+//            
+//            String[] lineParts = line.split("\t");
+//            String[] surfaceFormsPart = Arrays.copyOfRange(lineParts, 1, lineParts.length);
+//            Set<String> filteredSurfaceForms = new HashSet<String>();
+//            
+//            for ( String surfaceForm : surfaceFormsPart) {
+//                
+//                if ( surfaceForm.length() <= MAXIMUM_SURFACE_FORM_LENGHT ) filteredSurfaceForms.add(surfaceForm);
+//            }
+//            urisToLabels.put(lineParts[0], filteredSurfaceForms);
+//            urisToLabels.put(lineParts[0].replace("http://en.", "http://"), filteredSurfaceForms);
+//        }
         logger.info("Finished intializing surface forms! Found " + urisToLabels.size() + " dbpedia spotlight surfaceforms in file");
         
         return urisToLabels;

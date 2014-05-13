@@ -47,6 +47,8 @@ import de.danielgerber.rdf.NtripleUtil;
  */
 public class DBpediaLuceneIndexGenerator {
 
+	private static final int maxNrOfTries = 10;
+	private static final int DELAY_IN_MS = 5;
 	// default values, should get overwritten with main args
     private static String GRAPH                 = "http://dbpedia.org";
     private static double RAM_BUFFER_MAX_SIZE   = 1024;
@@ -71,7 +73,6 @@ public class DBpediaLuceneIndexGenerator {
      * @throws CorruptIndexException 
      */
     public static void main(String[] args) throws CorruptIndexException, IOException {
-        
         for (int i = 0; i < args.length ; i = i + 2) {
             
             if ( args[i].equals("-o") ) OVERWRITE_INDEX     	= Boolean.valueOf(args[i+1]);
@@ -150,25 +151,38 @@ public class DBpediaLuceneIndexGenerator {
         int counter = 0;
         long start = System.currentTimeMillis();
         int total = surfaceForms.size();
+        String uri;
+        Set<String> surfaceFormValues;
         
         Iterator<Map.Entry<String,Set<String>>> surfaceFormIterator = surfaceForms.entrySet().iterator();
         while ( surfaceFormIterator.hasNext() ) {
             
             Map.Entry<String,Set<String>> entry = surfaceFormIterator.next();
-            indexDocuments.add(indexGenerator.queryAttributesForUri(entry.getKey(), entry.getValue(), language2dbpediaLinks));
+            uri = entry.getKey();
+            //seems that we have to encode the URI somehow, otherwise we might get no data from the Virtuoso endpoint
+            uri = com.google.common.net.UrlEscapers.urlFragmentEscaper().escape(uri);
+            surfaceFormValues = entry.getValue();
+            IndexDocument document = indexGenerator.queryAttributesForUri(uri, surfaceFormValues, language2dbpediaLinks);
             
-            // improve speed through batch save
-            if ( ++counter % 10000 == 0 ) {
+            //we get no document if it was not possible to query the SPARQL endpoint for the URI
+            if(document != null){
+            	indexDocuments.add(document);
+            	// improve speed through batch save
+                if ( ++counter % 50000 == 0 ) {
 
-                indexGenerator.addIndexDocuments(indexDocuments);
-                System.out.println("Done: " + counter + "/" + total + " " + MessageFormat.format("{0,number,#.##%}", (double) counter / (double) total) + " in " + (System.currentTimeMillis() - start) + "ms" );
-                start = System.currentTimeMillis();
-                indexDocuments = new HashSet<IndexDocument>();
+                    indexGenerator.addIndexDocuments(indexDocuments);
+                    System.out.println("Done: " + counter + "/" + total + " " + MessageFormat.format("{0,number,#.##%}", (double) counter / (double) total) + " in " + (System.currentTimeMillis() - start) + "ms" );
+                    start = System.currentTimeMillis();
+                    indexDocuments = new HashSet<IndexDocument>();
+                    writer.commit();
+                }
             }
+            
+            
         }
         // write the last few items
         indexGenerator.addIndexDocuments(indexDocuments);
-        
+        writer.commit();
         writer.close();
     }
 
@@ -208,9 +222,10 @@ public class DBpediaLuceneIndexGenerator {
         stringType.setStoreTermVectors(false);
         FieldType textType = new FieldType(TextField.TYPE_STORED);
         textType.setStoreTermVectors(false);
+        Document luceneDocument;
         for ( IndexDocument indexDocument : indexDocuments ) {
             
-            Document luceneDocument = new Document();
+            luceneDocument = new Document();
             luceneDocument.add(new Field("uri", indexDocument.getUri(), stringType));
             luceneDocument.add(new Field("dbpediaUri", indexDocument.getCanonicalDBpediaUri(), stringType));
             luceneDocument.add(new Field("label", indexDocument.getLabel(), textType));
@@ -285,15 +300,37 @@ public class DBpediaLuceneIndexGenerator {
         // execute the query
         IndexDocument document = new IndexDocument();
         QueryEngineHTTP qexec = new QueryEngineHTTP(SPARQL_ENDPOINT, query);
-        ResultSet result = qexec.execSelect();
+        int nrOfTries = 0;
+        ResultSet result = null;
+        while(result == null && nrOfTries++ <= maxNrOfTries){
+        	try {
+    			result = qexec.execSelect();
+    		} catch (Exception e1) {
+    			System.err.println("An error occured while executing SPARQL query\n" + query + "\nRetrying...");
+    			e1.printStackTrace();
+    			try {
+					Thread.sleep(DELAY_IN_MS);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+    		}
+        }
+        
+        if(result == null){
+        	return null;
+        }
         
         while (result.hasNext()) {
-            
+        	
             QuerySolution solution = result.next();
             
             // those values do get repeated, we need them to set only one time
             if ( document.getUri().isEmpty() ) {
                 
+            	if(solution.get("label") == null){
+            		System.out.println(uri);
+            		return null;
+            	}
                 document.setUri(URLDecoder.decode(uri, "UTF-8"));
                 document.setLabel(solution.get("label").asLiteral().getLexicalForm());
                 document.setPageRank(solution.get("rank") != null ? Integer.valueOf(solution.get("rank").toString().replace("^^http://www.w3.org/2001/XMLSchema#integer", "")) : 0);

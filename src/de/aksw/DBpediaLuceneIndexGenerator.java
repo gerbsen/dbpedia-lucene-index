@@ -35,6 +35,7 @@ import com.hp.hpl.jena.query.QuerySolution;
 import com.hp.hpl.jena.query.ResultSet;
 import com.hp.hpl.jena.rdf.model.RDFNode;
 import com.hp.hpl.jena.sparql.engine.http.QueryEngineHTTP;
+import com.hp.hpl.jena.sparql.engine.http.QueryExceptionHTTP;
 import de.danielgerber.file.BufferedFileWriter;
 import de.danielgerber.file.BufferedFileWriter.WRITER_WRITE_MODE;
 import de.danielgerber.file.FileUtil;
@@ -68,8 +69,9 @@ public class DBpediaLuceneIndexGenerator {
      * @param args
      * @throws IOException 
      * @throws CorruptIndexException 
+     * @throws InterruptedException 
      */
-    public static void main(String[] args) throws CorruptIndexException, IOException {
+    public static void main(String[] args) throws CorruptIndexException, IOException, InterruptedException {
         
         for (int i = 0; i < args.length ; i = i + 2) {
             
@@ -147,6 +149,8 @@ public class DBpediaLuceneIndexGenerator {
         
         // time measurements
         int counter = 0;
+        int noLabelCounter = 0;
+        int http404Counter = 0;
         long start = System.currentTimeMillis();
         int total = surfaceForms.size();
         
@@ -160,8 +164,12 @@ public class DBpediaLuceneIndexGenerator {
             {
             	indexDocuments.add(indexGenerator.queryAttributesForUri("http://dbpedia.org/resource/"+entry.getKey(), entry.getValue(), language2dbpediaLinks));
             }
-            catch(NoLabelException e) {System.out.println(e.getMessage());}
-           
+            catch(NoLabelException e) {if(noLabelCounter%100==0)
+            {noLabelCounter++;System.out.println(e.getMessage()+" "+noLabelCounter+"/"+(counter+1)+" labels faulty ("+100*noLabelCounter/counter+"%)");}}
+            // don't know which one it is
+//          catch(org.openjena.atlas.web.HttpException|org.apache.jena.atlas.web.HttpException e)
+            catch(QueryExceptionHTTP e)
+            {System.out.println("Waiting for 10 seconds"+e.getMessage());Thread.sleep(10000);}
             
             // improve speed through batch save
             if ( ++counter % BATCH_SIZE == 0 ) {

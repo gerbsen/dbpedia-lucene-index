@@ -35,6 +35,7 @@ import com.hp.hpl.jena.query.QueryExecutionFactory;
 import com.hp.hpl.jena.query.QueryFactory;
 import com.hp.hpl.jena.query.QuerySolution;
 import com.hp.hpl.jena.query.ResultSet;
+import com.hp.hpl.jena.query.Syntax;
 import com.hp.hpl.jena.sparql.engine.http.QueryEngineHTTP;
 
 import de.danielgerber.file.BufferedFileWriter;
@@ -73,6 +74,7 @@ public class DBpediaLuceneIndexGenerator {
      * @throws CorruptIndexException 
      */
     public static void main(String[] args) throws CorruptIndexException, IOException {
+    	System.out.println(com.google.common.net.UrlEscapers.urlFragmentEscaper().escape("http://dbpedia.org/page/Are_You_Hot?"));
         for (int i = 0; i < args.length ; i = i + 2) {
             
             if ( args[i].equals("-o") ) OVERWRITE_INDEX     	= Boolean.valueOf(args[i+1]);
@@ -137,7 +139,7 @@ public class DBpediaLuceneIndexGenerator {
         DBpediaLuceneIndexGenerator indexGenerator = new DBpediaLuceneIndexGenerator();
         
         // create the index writer configuration and create a new index writer
-        IndexWriterConfig indexWriterConfig = new IndexWriterConfig(Version.LUCENE_46, new StandardAnalyzer(Version.LUCENE_46));
+        IndexWriterConfig indexWriterConfig = new IndexWriterConfig(Version.LUCENE_48, new StandardAnalyzer(Version.LUCENE_48));
         indexWriterConfig.setRAMBufferSizeMB(RAM_BUFFER_MAX_SIZE);
         indexWriterConfig.setOpenMode(OVERWRITE_INDEX || !indexGenerator.isIndexExisting(INDEX_DIRECTORY) ? OpenMode.CREATE : OpenMode.APPEND);
         writer = indexGenerator.createIndex(INDEX_DIRECTORY, indexWriterConfig);
@@ -162,8 +164,10 @@ public class DBpediaLuceneIndexGenerator {
             //seems that we have to encode the URI somehow, otherwise we might get no data from the Virtuoso endpoint
             uri = com.google.common.net.UrlEscapers.urlFragmentEscaper().escape(uri);
             surfaceFormValues = entry.getValue();
+            long startTime = System.currentTimeMillis();
             IndexDocument document = indexGenerator.queryAttributesForUri(uri, surfaceFormValues, language2dbpediaLinks);
-            
+			long endTime = System.currentTimeMillis();
+			System.out.println("Operation took " + (endTime - startTime) + "ms");
             //we get no document if it was not possible to query the SPARQL endpoint for the URI
             if(document != null){
             	indexDocuments.add(document);
@@ -328,7 +332,6 @@ public class DBpediaLuceneIndexGenerator {
             if ( document.getUri().isEmpty() ) {
                 
             	if(solution.get("label") == null){
-            		System.out.println(uri);
             		return null;
             	}
                 document.setUri(URLDecoder.decode(uri, "UTF-8"));

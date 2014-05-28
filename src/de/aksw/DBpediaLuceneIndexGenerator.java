@@ -9,7 +9,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleField;
@@ -28,7 +27,6 @@ import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.util.Version;
 import org.semanticweb.yars.nx.Node;
 import org.semanticweb.yars.nx.parser.NxParser;
-
 import com.google.common.net.UrlEscapers;
 import com.hp.hpl.jena.query.Query;
 import com.hp.hpl.jena.query.QueryExecution;
@@ -39,7 +37,6 @@ import com.hp.hpl.jena.query.ResultSet;
 import com.hp.hpl.jena.rdf.model.RDFNode;
 import com.hp.hpl.jena.sparql.engine.http.QueryEngineHTTP;
 import com.hp.hpl.jena.sparql.engine.http.QueryExceptionHTTP;
-
 import de.danielgerber.file.BufferedFileWriter;
 import de.danielgerber.file.BufferedFileWriter.WRITER_WRITE_MODE;
 import de.danielgerber.file.FileUtil;
@@ -255,7 +252,7 @@ public class DBpediaLuceneIndexGenerator {
 			for ( String type : indexDocument.getTypes() )
 				luceneDocument.add(new Field("types", type, stringType));
 			for ( String surfaceForm : indexDocument.getSurfaceForms() )
-				luceneDocument.add(new Field("surfaceForms", surfaceForm, stringType));
+				luceneDocument.add(new Field("surfaceForms", surfaceForm, textType));
 
 			luceneDocuments.add(luceneDocument);
 		}
